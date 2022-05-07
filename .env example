@@ -1,0 +1,19 @@
+# Gitea 
+GITEA_ALLOWED_HOST_LIST=host.docker.internal
+GITEA_ROOT_URL=https://host.docker.internal/
+GITEA_CERT_FILE=/tmp-certs/host.docker.internal.pem
+GITEA_KEY_FILE=/tmp-certs/host.docker.internal-key.pem
+GITEA_DOMAIN=host.docker.internal
+GITEA_SSH_DOMAIN=host.docker.internal
+GITEA_DB_HOST=gitea-db:5432
+GITEA_DB_NAME=gitea
+GITEA_DB_USER=gitea
+GITEA_DB_PASSWD=gitea
+# drone-server
+DRONE_ADMIN=test
+DRONE_USER_CREATE=username:test,admin:true # should be the same as for gitea user with admin privileges  
+DRONE_GITEA_CLIENT_ID=cdxxxxx-3xxx-4xxx-bxx2-19cxxxxxxx
+DRONE_GITEA_CLIENT_SECRET=uixxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxW
+DRONE_RPC_SECRET=9c39xxxxxxxxxfbc42
+DRONE_SERVER_HOST=host.docker.internal:4005
+DRONE_HOST=https://host.docker.internal:4005

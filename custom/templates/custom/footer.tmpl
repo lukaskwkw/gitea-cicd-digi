@@ -1,0 +1,8 @@
+{{if or .PageIsViewCode .RequireHighlightJS}}
+<script src="https://host.docker.internal/assets/deflate.js"></script>
+<script src="https://host.docker.internal/assets/encode.js"></script>
+<script src="https://host.docker.internal/assets/plantuml_codeblock_parse.js"></script>
+<script>
+parsePlantumlCodeBlocks("https://host.docker.internal:8443")
+</script>
+{{end}}
