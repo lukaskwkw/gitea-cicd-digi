@@ -31,18 +31,44 @@ and i.e. if you are using WSL then copy to your
 mkcert -CAROOT
 ```
 locations and hit `mkcert --install` do it on windows and wsl.
-### 4. Run docker-compose
+### 4. Clone repo and setup services
+1. Clone repo, rename .env.example file
 ```sh
-docker-compose -p gitea up -d
+mv .env.example .env
 ```
+2. generate DRONE_RPC_SECRET by
+```sh
+openssl rand -hex 16
+```
+and pass it to .env file into DRONE_RPC_SECRET.
+Run just gitea server for now
+```sh
+docker-compose -p gitea up -d server
+```
+3. open gitea in firefox by providing url, save settings 
+4. Create user i.e. `tommy`
+save name of created user to .env file to
+```
+DRONE_ADMIN=tommy
+DRONE_USER_CREATE=tommy:test,admin:true
+```
+5. Navigate go to `https://host.docker.internal/user/settings/applications` and create token
+6. ClientID and ClientSecret to .env file to
+```
+DRONE_GITEA_CLIENT_ID
+DRONE_GITEA_CLIENT_SECRET
+```
+7. Launch rest of services by docker-compose -p gitea up -d
+8. Go to `https://host.docker.internal:4005` Click Continue and for **Complete your Drone Registration.** in your Your Full Name remember to put `tommy` or you won't have admin privileges 
+9. Drone Dashboard should appear but you don't have any repos so you need to create one after that click Sync button
 
-All dockerfiles have 
-
+## Info
+All dockerfiles that somehow interact with other SSL services need to have 
 ```dockerfile
-RUN apk update && apk add ca-certificates && rm -rf /var/cache/apk/*
+COPY add_ca_cert.sh .
+RUN add_ca_cert.sh
 ```
-this is necessary in order to make mkcert works as these 
+this is necessary in order to make mkcert works.
 
-## To-Do env config file
 ## To-Do linux local support
 
