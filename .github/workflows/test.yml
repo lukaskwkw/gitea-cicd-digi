@@ -1,0 +1,82 @@
+name: "Build and test"
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+    - name: checkout source
+      uses: actions/checkout@v1
+
+    #   uncomment only when testing locally by using act - https://github.com/nektos/act
+    # - name: install docker-compose
+    #   run: curl -L "https://github.com/docker/compose/releases/download/v2.5.0/docker-compose-linux-x86_64" -o /usr/local/bin/docker-compose
+   
+    # - name: install docker-compose 2
+    #   run: chmod +x /usr/local/bin/docker-compose
+ 
+    - name: 1. Create certificates by using mkcert docker image
+      run: docker run -it -d -v mkcert-data:/app/ca -v mkcert-data:/usr/local/bin -v mkcert-data:/app/certs --name mkcert aegypius/mkcert-for-nginx-proxy sh -c 'mkcert -install && mkcert host.docker.internal localhost && chmod 544 * && sh'
+ 
+    - name: mv .env.example to .env
+      run: mv .env.example .env
+
+    - name: docker compose pull images
+      run: docker-compose pull
+
+    - name: Cache images
+      uses: satackey/action-docker-layer-caching@v0.0.11
+      continue-on-error: true
+
+    - name: docker compose all
+      run: docker-compose -p gitea-test up -d --build
+
+    - name: run structure tests for gitea
+      uses: plexsystems/container-structure-test-action@v0.2.0
+      with:
+        image: gitea-test_server:latest
+        config: tests/gitea.yaml
+
+    - name: run structure tests for drone
+      uses: plexsystems/container-structure-test-action@v0.2.0
+      with:
+        image:  gitea-test_drone-server:latest
+        config: tests/drone.yml
+
+    - name: run structure tests for drone-agent
+      uses: plexsystems/container-structure-test-action@v0.2.0
+      with:
+        image: gitea-test_drone-agent:latest
+        config: tests/drone-agent.yml
+
+    # check if mkcert existsand permissions are correct
+    - name: check if important files exist and permissions are correct for gitea container
+      run: cat ./tests/check_file_perm.sh | docker exec -i gitea sh
+
+    - name: check if important files exist and permissions are correct for drone container
+      run: cat ./tests/check_file_perm.sh | docker exec -i drone-server sh
+
+    - name: check if important files exist and permissions are correct for reverse-proxy container
+      run: cat ./tests/check_file_perm.sh | docker exec -i gitea-reverseproxy sh
+
+    # server discovery check by using different container but with same network
+    - name: server discovery for gitea container
+      run: docker exec gitea sh -c "curl -4 -I -s --retry 4 --retry-connrefused https://localhost"
+
+    - name: server discovery for drone container
+      run: docker exec drone-server sh -c "apk update && apk add curl && curl -4 -I -s --retry 4 --retry-connrefused https://localhost"
+
+      # for reverse-proxy mkcert is not installed thus cert is not set 
+
+    # server discovery check by using different container but with same network
+    - name: server discovery for gitea network
+      run: docker run --rm --network container:gitea -v mkcert-data:/ca appropriate/curl -4 --cacert ca/rootCA.pem -I -s --retry 4 --retry-connrefused https://localhost/
+
+    - name: server discovery for drone network
+      run: docker run --rm --network container:drone-server -v mkcert-data:/ca appropriate/curl -4 --cacert ca/rootCA.pem -I -s --retry 4 --retry-connrefused https://localhost/
+    
+    - name: server discovery for reverse-proxy network
+      run: docker run --rm --network container:gitea-reverseproxy -v mkcert-data:/ca appropriate/curl -4 --cacert ca/rootCA.pem -I -s --retry 4 --retry-connrefused https://localhost:8443/

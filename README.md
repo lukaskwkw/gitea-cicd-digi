@@ -1,30 +1,39 @@
 # Gitea CI/CD and ssl certs repo helper.
 ## Installation
 ### 1. Create certificates by using mkcert docker image
-This command base on  [vishnudxb/docker-mkcert](https://github.com/vishnudxb/docker-mkcert) image
+This command basing on  [aegypius/mkcert-for-nginx-proxy](https://github.com/aegypius/mkcert-for-nginx-proxy) image
+
+Paste to terminal
 
 ```sh
-docker run -d -e domain=portainer.local,host.docker.internal --name mkcert -v mkcert-data:/root/.local/share/mkcert vishnunair/docker-mkcert
-```
-and then
-```sh
-docker exec mkcert sh -c 'cp /bin/mkcert /root/.local/share/mkcert/mkcert ; chmod 775 -R . ; chown :100 -R .'
+docker run -it -d -v mkcert-data:/app/ca -v mkcert-data:/usr/local/bin -v mkcert-data:/app/certs --name mkcert aegypius/mkcert-for-nginx-proxy sh -c 'mkcert -install && mkcert host.docker.internal localhost && chmod 544 * && sh'
 ```
 
-basically first command installs mkcert, creates few certs from domain env.
+or **(option 2)** if you already have mkcert installed on system then
+
+run
 
 ```sh
-/bin/sh -c mkcert -install && for i in $(echo $domain | sed "s/,/ /g"); do mkcert $i; done && tail -f -n0 /etc/hosts
+docker run --rm -itd -v mkcert-data:/app/ca -v mkcert-data:/usr/local/bin -v mkcert-data:/app/certs --name mkcert aegypius/mkcert-for-nginx-proxy sh
 ```
+then copy certs to mkcert container
+```sh
+docker cp "$(mkcert -CAROOT)/rootCA.pem" mkcert:/app/ca
+docker cp "$(mkcert -CAROOT)/rootCA-key.pem" mkcert:/app/ca
+```
+and install certs 
+```sh
+docker kill mkcert && docker run -itd --name mkcert -v mkcert-data:/app/ca -v mkcert-data:/usr/local/bin -v mkcert-data:/app/certs aegypius/mkcert-for-nginx-proxy sh -c 'mkcert -install && mkcert host.docker.internal localhost && chmod 544 * && sh'
+```
+then skip to point 4.
 
-and then copy mkcert executable to share location and sets permissions in order other containers can access to it and do mkcert -install into theirs containers. 
 ### 2. Install mkcert on your machine
 
 I.e. installation for [WSL](https://www.haveiplayedbowie.today/blog/posts/secure-localhost-with-mkcert/)
 
 ### 3. Extract mkcert root keys to your system key chain
 ```sh
-docker cp mkcert:/root/.local/share/mkcert ./
+docker cp mkcert:/app/certs ./
 ```
 and i.e. if you are using WSL then copy to your
 ```sh
@@ -52,21 +61,24 @@ save name of created user to .env file to
 DRONE_ADMIN=tommy
 DRONE_USER_CREATE=tommy:test,admin:true
 ```
-5. Navigate go to `https://host.docker.internal/user/settings/applications` and create token
+5. Navigate go to `https://host.docker.internal/user/settings/applications` click create OAuth2 app and then
+the redirect url should be: 
+```
+https://host.docker.internal:4005/login
+```
 6. ClientID and ClientSecret to .env file to
 ```
 DRONE_GITEA_CLIENT_ID
 DRONE_GITEA_CLIENT_SECRET
 ```
 7. Launch rest of services by docker-compose -p gitea up -d
-8. Go to `https://host.docker.internal:4005` Click Continue and for **Complete your Drone Registration.** in your Your Full Name remember to put `tommy` or you won't have admin privileges 
+8. Go to `https://host.docker.internal:4005` Click Continue authorize created gitea app and for **Complete your Drone Registration.** in your Your Full Name remember to put `tommy` or you won't have admin privileges 
 9. Drone Dashboard should appear but you don't have any repos so you need to create one after that click Sync button
 
 ## Info
-All dockerfiles that somehow interact with other SSL services need to have 
+All dockerfiles that someway interact with other SSL services need to have 
 ```dockerfile
-COPY add_ca_cert.sh .
-RUN add_ca_cert.sh
+RUN apk update && apk add ca-certificates && rm -rf /var/cache/apk/*
 ```
 this is necessary in order to make mkcert works.
 
