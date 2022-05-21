@@ -9,7 +9,7 @@ volumes:
   gitea-config:
   postgresql:
   drone:
-  drone-agent:
+  drone-autoscaler-data:
   mkcert-data:
     external: true
 
@@ -122,24 +122,31 @@ services:
     networks:
       - gitea
 
-  drone-agent:
+  drone-autoscaler:
     build:
       context: .
-      dockerfile: drone-agent.Dockerfile
-    container_name: drone-agent
-    command: agent
+      dockerfile: drone-autoscaler.Dockerfile
+    container_name: drone-autoscaler
     restart: always
     depends_on:
       - drone-server
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - drone-agent:/data
+      - drone-autoscaler-data
       - mkcert-data:/app/certs/
     environment:
-      - DRONE_RPC_SERVER=${DRONE_HOST}
-      - DRONE_RPC_SECRET=${DRONE_RPC_SECRET}
-      - DRONE_RUNNER_CAPACITY=1
-      - DRONE_RUNNER_NETWORKS=gitea
-      - DRONE_RUNNER_ENVIRON=GIT_SSL_NO_VERIFY:true
+      - DRONE_SERVER_HOST=${DRONE_SERVER_HOST},
+      - DRONE_SERVER_TOKEN=${DRONE_SERVER_TOKEN},
+      - DRONE_AGENT_TOKEN=${DRONE_RPC_SECRET},
+      - DRONE_POOL_MIN=0,
+      - DRONE_POOL_MAX=2,
+      - DRONE_DIGITALOCEAN_SIZE=${DRONE_DIGITALOCEAN_SIZE}
+      - DRONE_DIGITALOCEAN_TAGS=${DRONE_DIGITALOCEAN_TAGS}
+      - DRONE_SERVER_PROTO=${DRONE_SERVER_PROTO}
+      - DRONE_DIGITALOCEAN_REGION=${DRONE_DIGITALOCEAN_REGION}
+      - DRONE_DIGITALOCEAN_TOKEN=${DRONE_DIGITALOCEAN_TOKEN}
+      - DRONE_TLS_CERT=${GITEA_CERT_FILE}
+      - DRONE_TLS_KEY=${GITEA_KEY_FILE}
+      - DRONE_AGENT_ENVIRON=GIT_SSL_NO_VERIFY:true
     networks:
       - gitea
