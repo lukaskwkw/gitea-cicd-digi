@@ -46,11 +46,11 @@ jobs:
         image:  gitea-test_drone-server:latest
         config: tests/drone.yml
 
-    - name: run structure tests for drone-agent
+    - name: run structure tests for drone-autoscaler
       uses: plexsystems/container-structure-test-action@v0.2.0
       with:
-        image: gitea-test_drone-agent:latest
-        config: tests/drone-agent.yml
+        image: gitea-test_drone-autoscaler:latest
+        config: tests/drone-autoscaler.yml
 
     # check if mkcert existsand permissions are correct
     - name: check if important files exist and permissions are correct for gitea container
